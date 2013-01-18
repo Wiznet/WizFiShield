@@ -31,5 +31,5 @@ Example codes are as below.
 Manual for WizFi shield
 
 ## To do
-# English version document
+- English version document
 
