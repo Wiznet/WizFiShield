@@ -8,7 +8,7 @@ All the software and hardware materials are freely available and open source.
 - Operates with standard 802.11b/g/n access point at speed up to11Mbps (802.11b)
 - Security Protocol: WEP, WPA/WPA2-PSK, Enterprise, EAP-FAST, EAP-TLS, EAP-TTLS, PEAP
 
-![WizFi Shield](http://blog.wiznet.co.kr/FIles/Wizfishield_ver2.0.png "WizFi Shield")
+![WizFi Shield](http://blog.wiznet.co.kr/FIles/Wizfishield_ver2.0.jpg "WizFi Shield")
 
 ## Hardware
 These are PCB files for the WizFi Shield for Arduino. The files were created in the free & low cost EagleCad software available from [CadSoft](http://www.cadsoftusa.com/download-eagle/?language=en).
@@ -24,7 +24,12 @@ Example codes are as below.
 - Web client test
 - Web server test
 
+
 * TimerOne : Timer 1 ISR library
 
 ## Documents
 Manual for WizFi shield
+
+## To do
+# English version document
+
