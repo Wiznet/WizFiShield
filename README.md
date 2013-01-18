@@ -14,7 +14,17 @@ All the software and hardware materials are freely available and open source.
 These are PCB files for the WizFi Shield for Arduino. The files were created in the free & low cost EagleCad software available from [CadSoft](http://www.cadsoftusa.com/download-eagle/?language=en).
 
 ## Software
-These are driver code of WizFi shield and test code
+These are library source code of WizFi shield and example code.
+Example codes are as below.
+-. Basic test
+-. Basic Server test
+-. Limited AP test
+-. UDP client test
+-. UDP server test
+-. Web client test
+-. Web server test
+
+* TimerOne : Timer 1 ISR liberay
 
 ## Documents
 Manual for WizFi shield
