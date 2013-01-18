@@ -16,15 +16,15 @@ These are PCB files for the WizFi Shield for Arduino. The files were created in 
 ## Software
 These are library source code of WizFi shield and example code.
 Example codes are as below.
--. Basic test
--. Basic Server test
--. Limited AP test
--. UDP client test
--. UDP server test
--. Web client test
--. Web server test
+- Basic test
+- Basic Server test
+- Limited AP test
+- UDP client test
+- UDP server test
+- Web client test
+- Web server test
 
-* TimerOne : Timer 1 ISR liberay
+* TimerOne : Timer 1 ISR library
 
 ## Documents
 Manual for WizFi shield
