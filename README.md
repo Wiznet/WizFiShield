@@ -30,6 +30,3 @@ Example codes are as below.
 ## Documents
 Manual for WizFi shield
 
-## To do
-- English version document : Added on 22 April, 2013
-
