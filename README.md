@@ -15,7 +15,9 @@ These are PCB files for the WizFi Shield for Arduino. The files were created in 
 
 ## Software
 These are library source code of WizFi shield and example code.
+
 Example codes are as below.
+
 - Basic test
 - Basic Server test
 - Limited AP test
@@ -24,9 +26,18 @@ Example codes are as below.
 - Web client test
 - Web server test
 
-
 * TimerOne : Timer 1 ISR library
 
 ## Documents
-Manual for WizFi shield
+Manual for WizFi shield (Korean & English version)
+
+## Revision History
+Update Release : 28 May 2013
+
+- Html parse lib added
+- New examples added: RC car control using UDP & Web
+- Some minor change on examples.
+
+First release : Dec. 2012
+
 
