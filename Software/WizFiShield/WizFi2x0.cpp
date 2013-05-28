@@ -59,6 +59,19 @@ prog_char Inval_Noti_Msg[] PROGMEM = "Invalid Notification";
 prog_char NCUDP_Msg[] PROGMEM = "AT+NCUDP=%s,%u,%u\r\n";
 prog_char NSUDP_Msg[] PROGMEM = "AT+NSUDP=%u\r\n";
 
+prog_char PING_Msg[] PROGMEM = "AT+PING=%s,%d\r\n";
+
+prog_char Disassociate_Msg[] PROGMEM = "Disassociated!";
+
+prog_char ConnectNoti_Msg[] PROGMEM = "[CONNECT";
+prog_char DisconnNoti_Msg[] PROGMEM = "[DISCONNECT";
+prog_char DisassociateNoti_Msg[] PROGMEM = "[Disassociation";
+prog_char DisassociateNoti2_Msg[] PROGMEM = "[DISASSOCIATED";
+
+prog_char Debug_NotifyMsg[] PROGMEM = "\r\nNotify Message: ";
+prog_char Debug_ReplyMsg[] PROGMEM = "\r\nRcvd Reply: ";
+prog_char Debug_AllDataMsg[] PROGMEM = "\r\n\r\nAll Data Received\r\n";
+prog_char Debug_EnterParseMsg[] PROGMEM = "\r\nEnter ParseNotify: ";
 
 PROGMEM const char *string_table[] = 
 {
@@ -104,13 +117,34 @@ PROGMEM const char *string_table[] =
 	Sock_F_Msg,			// 39
 	Inval_Noti_Msg,		// 40
 	NCUDP_Msg,			// 41
-	NSUDP_Msg			// 42
+	NSUDP_Msg,			// 42
+	PING_Msg,			// 43
+	Disassociate_Msg,		// 44
+	ConnectNoti_Msg,		// 45
+	DisconnNoti_Msg,		// 46
+	DisassociateNoti_Msg, 	// 47
+	DisassociateNoti2_Msg,	// 48
+	Debug_NotifyMsg,		// 49
+	Debug_ReplyMsg,		// 50
+	Debug_AllDataMsg,		// 51
+	Debug_EnterParseMsg	// 52
 };
 
 #endif
 
+
 WizFi2x0Class::WizFi2x0Class()
 {
+	WizFi2x0_RST = 2;
+	WizFi2x0_DataReady = 3;
+	WizFi2x0_CS = 4;
+}
+
+void WizFi2x0Class::SetPinMap(uint8_t tmpRST, uint8_t tmpRDY, uint8_t tmpCS)
+{
+	WizFi2x0_RST = tmpRST;
+	WizFi2x0_DataReady = tmpRDY;
+	WizFi2x0_CS = tmpCS;
 }
 
 void WizFi2x0Class::begin(void)
@@ -161,11 +195,20 @@ void WizFi2x0Class::begin(void)
 	NOTI_TYPE = NO_NOTI;
 
 	bFirstEnd = false;
-	
+
+	CmdResult = CMD_AVAILABLE;
+
+	bByteStuff = false;
+	ConsecutiveSpecialCharCount = 0;
+
+	SPIRxFreeBuf = MAX_SPI_BUFSIZE;
+	SPI_Rx_rd_ptr = 0;
+	SPI_Rx_wr_ptr = 0;
 
 //	Client = &myClient;
 
 }
+
 
 uint8_t WizFi2x0Class::associate(void)
 {
@@ -173,9 +216,11 @@ uint8_t WizFi2x0Class::associate(void)
 	
 	Current_Command_Code = OP_WA;
 	Current_CmdState = WizFi2x0_CmdState_IDLE;
+	CmdResult = CMD_AVAILABLE;
 	
 	while(1)
 	{
+		RcvPacket();
 		retval = SendCommand(Current_Command_Code);
 
 		if(retval == 1)
@@ -196,11 +241,13 @@ uint8_t WizFi2x0Class::associate(const char *ssid, const char *passphrase, SECUT
 
 	Current_Command_Code = OP_AT;
 	Current_CmdState = WizFi2x0_CmdState_IDLE;
+	CmdResult = CMD_AVAILABLE;
 	
 	while(1)
 	{
+		RcvPacket();
+		
 		retval = SendCommand(Current_Command_Code);
-
 		if(retval == 1)
 		{
 			switch(Current_Command_Code)
@@ -294,9 +341,11 @@ uint8_t WizFi2x0Class::disassociate(void)
 
 	Current_Command_Code = OP_WD;
 	Current_CmdState = WizFi2x0_CmdState_IDLE;
+	CmdResult = CMD_AVAILABLE;
 	
 	while(1)
 	{
+		RcvPacket();
 		retval = SendCommand(Current_Command_Code);
 
 		if(retval == 1)
@@ -309,6 +358,31 @@ uint8_t WizFi2x0Class::disassociate(void)
 		}
 	}
 	
+}
+
+uint8_t WizFi2x0Class::send_ping(byte *buf)
+{
+	uint8_t retval;
+	
+	SetPeerIPAddr(buf);
+	
+	Current_Command_Code = OP_PING;
+	Current_CmdState = WizFi2x0_CmdState_IDLE;
+	CmdResult = CMD_AVAILABLE;
+	
+	while(1)
+	{
+		RcvPacket();
+		retval = SendCommand(Current_Command_Code);
+
+		if(retval == 1)
+		{
+			return 1;
+		}else if(retval == 2 || retval == 3)
+		{
+			return 0; //Disassociation Failed
+		}
+	}
 }
 
 boolean WizFi2x0Class::IsAssociated(void)
@@ -325,10 +399,12 @@ uint8_t WizFi2x0Class::SetMACAddr(byte * buf)
 	
 	Current_Command_Code = OP_NMAC;
 	Current_CmdState = WizFi2x0_CmdState_IDLE;
+	CmdResult = CMD_AVAILABLE;
 
 	
 	while(1)
 	{
+		RcvPacket();
 		retval = SendCommand(Current_Command_Code);
 
 		if(retval == 1)
@@ -353,6 +429,7 @@ uint8_t WizFi2x0Class::SetTxPower(uint8_t power_level)
 	
 	Current_Command_Code = OP_WP;
 	Current_CmdState = WizFi2x0_CmdState_IDLE;
+	CmdResult = CMD_AVAILABLE;
 
 	if(power_level >= 0 && power_level <= 15)
 		PowerLevel = power_level;
@@ -365,6 +442,7 @@ uint8_t WizFi2x0Class::SetTxPower(uint8_t power_level)
 	
 	while(1)
 	{
+		RcvPacket();
 		retval = SendCommand(Current_Command_Code);
 
 		if(retval == 1)
@@ -395,9 +473,11 @@ uint8_t WizFi2x0Class::wifi_scan(void)
 
 	Current_Command_Code = OP_WS;
 	Current_CmdState = WizFi2x0_CmdState_IDLE;
+	CmdResult = CMD_AVAILABLE;
 	
 	while(1)
 	{
+		RcvPacket();
 		retval = SendCommand(Current_Command_Code);
 
 		if(retval == 1)
@@ -476,16 +556,24 @@ bool WizFi2x0Class::CheckRSSIPower(uint8_t value, char * buf)
 
 uint8_t WizFi2x0Class::write(byte ch)
 {
+	uint8_t retval;
+	uint8_t DBG_Buf[5];
+	
 	if(ByteStuff(&ch))
 	{
 		digitalWrite(WizFi2x0_CS, LOW);
-		SPI.transfer(spichar.SPI_ESC_CHAR);
+		retval = SPI.transfer(spichar.SPI_ESC_CHAR);
 		digitalWrite(WizFi2x0_CS, HIGH);
+		
+		storebytetoSPIBuf(retval);
 	}
 
+	
 	digitalWrite(WizFi2x0_CS, LOW);
-	SPI.transfer(ch);
+	retval = SPI.transfer(ch);
 	digitalWrite(WizFi2x0_CS, HIGH);
+
+	storebytetoSPIBuf(retval);
 
 //	Serial.println((char *)"WizFi2x0Class::write() called");
 	return 1;
@@ -610,9 +698,10 @@ uint8_t WizFi2x0Class::SendCommand(uint8_t command)
 		memset((char *)MsgBuf, 0, sizeof(MsgBuf));
 		MakeCommand(command);
 		Current_CmdState = WizFi2x0_CmdState_Ready;
-#ifdef DEBUG_ENABLE		
+		lastCommand = command;
+//#ifdef DEBUG_ENABLE		
 		Serial.println((char *)MsgBuf);
-#endif
+//#endif
 		return 5;
 	}else if(Current_CmdState == WizFi2x0_CmdState_Ready)
 	{
@@ -622,16 +711,16 @@ uint8_t WizFi2x0Class::SendCommand(uint8_t command)
 		RxIdx = 0;
 		Current_CmdState = WizFi2x0_CmdState_Sent;
 		Current_ReplyState = WizFi2x0_ReplyState_IDLE;
+		CmdResult = CMD_SENT;
 	}else if(Current_CmdState == WizFi2x0_CmdState_Sent)
 	{
-		retval = CheckReply(command);
-		if(retval == 1)
+		if(CmdResult == CMD_SUCCEEDED)
 		{
 			Current_CmdState = WizFi2x0_CmdState_IDLE;
 			Current_ReplyState = WizFi2x0_ReplyState_IDLE;
 			ReplyCheckTimer.TimerStop();
 			return 1;
-		}else if(retval == 2)
+		}else if(CmdResult == CMD_FAILED)
 		{
 			ReplyCheckTimer.TimerStop();
 			Current_CmdState = WizFi2x0_CmdState_IDLE;
@@ -658,9 +747,9 @@ uint8_t WizFi2x0Class::SendCommand(uint8_t command)
 
 void WizFi2x0Class::MakeCommand(uint8_t command)
 {
-	byte tmpstr[128];
+	byte tmpstr[MAX_DATA_BUFSIZE];
 
-	memset(tmpstr, 0, 128);
+	memset(tmpstr, 0, MAX_DATA_BUFSIZE);
 	
 	if(command == OP_AT)
 	{
@@ -800,6 +889,10 @@ void WizFi2x0Class::MakeCommand(uint8_t command)
 	{
 	       strcpy_P((char *)tmpstr, (char*)pgm_read_word(&(string_table[42]))); // Necessary casts and dereferencing, just copy.
 		sprintf((char *)MsgBuf, (char *)tmpstr, SrcPortNum);
+	}else if(command == OP_PING)
+	{
+	       strcpy_P((char *)tmpstr, (char*)pgm_read_word(&(string_table[43]))); // Necessary casts and dereferencing, just copy.
+		sprintf((char *)MsgBuf, (char *)tmpstr, PeerIPAddr, 5);
 	}
 }
 
@@ -812,231 +905,254 @@ void WizFi2x0Class::RcvPacket(void)
 {
 	byte tmp;
 	byte DBG_Buf[32];
+	uint8_t retval;
+
+	readbytefromSPI();
+	
+//	tmp = read();
+	if(!RevByteStuff(&tmp))
+		return;
 	
 	switch(Current_ESC_State)
 	{
 	case WizFi2x0_ESC_IDLE:
-		tmp = read();
-		if((tmp != spichar.SPI_IDLE_CHAR) && (tmp != spichar.SPI_INVALID_CHAR_ALL_ZERO) && (tmp != spichar.SPI_INVALID_CHAR_ALL_ONE))
+		if(tmp == ASCII_ESC)
 		{
-			if(tmp == ASCII_ESC)
-			{
-				Current_ESC_State = WizFi2x0_ESC_STARTED;
+			Current_ESC_State = WizFi2x0_ESC_STARTED;
 #ifdef DEBUG_ENABLE		
-				Serial.println("<ESC>");
+			Serial.println("<ESC>");
 #endif
-			}else if(tmp == '[')
+		}else
+		{
+			if(CmdResult == CMD_SENT)
 			{
-				Current_ESC_State = WizFi2x0_ESC_NOTIFY;
-				memset(NotifyBuf, 0, 40);
-				NotifyIdx = 0;
-#ifdef DEBUG_ENABLE		
-				Serial.println("NOTIFY Message was started");
-#endif
+				if(tmp!=0x0D && tmp !=0x0A)
+					RcvdBuf[RxIdx++] = tmp;
+				else
+				{
+					if(tmp == 0x0A)
+					{
+						if(RxIdx > 0)
+						{
+							if(IsNotifyMessage(RcvdBuf))
+							{
+//#ifdef DEBUG_ENABLE		
+								memset(DBG_Buf, 0, sizeof(DBG_Buf));
+	       						strcpy_P((char *)DBG_Buf, (char*)pgm_read_word(&(string_table[49]))); // Necessary casts and dereferencing, just copy.
+								Serial.print((char const *)DBG_Buf);
+								Serial.println((char *)RcvdBuf);
+//#endif
+								ParseNotify(RcvdBuf);
+								memset(RcvdBuf, 0, MAX_DATA_BUFSIZE);
+								RxIdx = 0;
+							}else
+							{
+								memset(DBG_Buf, 0, sizeof(DBG_Buf));
+	       						strcpy_P((char *)DBG_Buf, (char*)pgm_read_word(&(string_table[50]))); // Necessary casts and dereferencing, just copy.
+								Serial.print((char const *)DBG_Buf);
+								Serial.println((char *)RcvdBuf);
+
+								retval = ParseReply(RcvdBuf, lastCommand);
+								memset(RcvdBuf, 0, MAX_DATA_BUFSIZE);
+								RxIdx = 0;
+
+								if(retval == 1)
+									CmdResult = CMD_SUCCEEDED;
+								else if(retval == 2)
+									CmdResult = CMD_FAILED;
+
+								Current_ESC_State = WizFi2x0_ESC_IDLE;
+//								Serial.print("\r\nWizFi2x0_ESC_IDLE");
+							}
+						}
+					}
+				}
 			}else
 			{
-#ifdef DEBUG_ENABLE
-				memset(DBG_Buf, 0, 10);
-				sprintf((char *)DBG_Buf, " %02X", tmp);
-				Serial.print((char)tmp);
-				Serial.println((char *)DBG_Buf);
+				if(tmp == '[')
+				{
+					Current_ESC_State = WizFi2x0_ESC_NOTIFY;
+					memset(NotifyBuf, 0, 40);
+					NotifyIdx = 0;
+					NotifyBuf[NotifyIdx++] = tmp;
+#ifdef DEBUG_ENABLE		
+					Serial.println("NOTIFY Message was started");
 #endif
+				}
 			}
 		}
 		break;
 	case WizFi2x0_ESC_STARTED:
-		tmp = read();
-		if((tmp != spichar.SPI_IDLE_CHAR) && (tmp != spichar.SPI_INVALID_CHAR_ALL_ZERO) && (tmp != spichar.SPI_INVALID_CHAR_ALL_ONE))
+		if(tmp == 'Z')
 		{
-			if(tmp == 'Z')
-			{
-				Current_ESC_State = WizFi2x0_ESC_SOCK;
-				Current_Sock_Type = PROTO_TCP;
+			Current_ESC_State = WizFi2x0_ESC_SOCK;
+			Current_Sock_Type = PROTO_TCP;
 #ifdef DEBUG_ENABLE		
-				Serial.println("Z");
+			Serial.println("Z");
 #endif
-			}
-			else if(tmp == 'y')
-			{
-				Current_ESC_State = WizFi2x0_ESC_SOCK;
-				Current_Sock_Type = PROTO_UDP;
+		}
+		else if(tmp == 'y')
+		{
+			Current_ESC_State = WizFi2x0_ESC_SOCK;
+			Current_Sock_Type = PROTO_UDP;
 #ifdef DEBUG_ENABLE		
-				Serial.println("y");
+			Serial.println("y");
 #endif
-			}
-			else
-			{
+		}else if(tmp == 'O')
+		{
+			Current_ESC_State = WizFi2x0_ESC_IDLE;
 #ifdef DEBUG_ENABLE		
-				Serial.println((char)tmp);
+			Serial.println("O");
 #endif
-				Current_ESC_State = WizFi2x0_ESC_IDLE;
-			}
+		}
+		else
+		{
+#ifdef DEBUG_ENABLE		
+			Serial.println((char)tmp);
+#endif
+			Current_ESC_State = WizFi2x0_ESC_IDLE;
 		}
 		break;
 	case WizFi2x0_ESC_SOCK:
-		tmp = read();
-		if((tmp != spichar.SPI_IDLE_CHAR) && (tmp != spichar.SPI_INVALID_CHAR_ALL_ZERO) && (tmp != spichar.SPI_INVALID_CHAR_ALL_ONE))
-		{
-			if(((tmp >= '0') && (tmp <= '9')) || ((tmp >= 'a') && (tmp <= 'f')))
-			{
-				if(Current_Sock_Type == PROTO_TCP)
-				{
-					Current_ESC_State = WizFi2x0_ESC_CID;
-					CurrentSockIndex = tmp - '0';
-					memset(RcvdBuf, 0, 128);
-					ESC_Length_Idx = 0;
-					ESC_Data_Length = 0;
-#ifdef DEBUG_ENABLE		
-					Serial.println((char)tmp);
-#endif
-				}else
-				{
-					Current_ESC_State = WizFi2x0_ESC_PEERIP;
-					CurrentSockIndex = tmp - '0';
-					memset(RcvdBuf, 0, 128);
-					ESC_Length_Idx = 0;
-					ESC_Data_Length = 0;
-#ifdef DEBUG_ENABLE		
-					Serial.println((char)tmp);
-#endif
-				}
-			}else
-			{
-				Current_ESC_State = WizFi2x0_ESC_IDLE;
-			}
-		}
-		break;
-	case WizFi2x0_ESC_PEERIP:
-		tmp = read();
-		if((tmp != spichar.SPI_IDLE_CHAR) && (tmp != spichar.SPI_INVALID_CHAR_ALL_ZERO) && (tmp != spichar.SPI_INVALID_CHAR_ALL_ONE))
-		{
-			if(((tmp >= '0') && (tmp <= '9')) || (tmp == '.'))
-				RcvdBuf[ESC_Length_Idx++] = tmp;
-			else if(tmp == ' ')
-			{
-				memcpy(PeerIPAddr, RcvdBuf, 16);
-				memset(RcvdBuf, 0, 128);
-				ESC_Length_Idx = 0;
-				ESC_Data_Length = 0;
-				PeerPortNum = 0;
-				
-//				Serial.println((char *)PeerIPAddr);
-				Current_ESC_State = WizFi2x0_ESC_PEERPORT;
-			}
-			else
-				Current_ESC_State = WizFi2x0_ESC_IDLE;
-		}
-		break;
-	case WizFi2x0_ESC_PEERPORT:
-		tmp = read();
-		if((tmp != spichar.SPI_IDLE_CHAR) && (tmp != spichar.SPI_INVALID_CHAR_ALL_ZERO) && (tmp != spichar.SPI_INVALID_CHAR_ALL_ONE))
+		if(((tmp >= '0') && (tmp <= '9')) || ((tmp >= 'a') && (tmp <= 'f')))
 		{
 			if((tmp >= '0') && (tmp <= '9'))
+				CurrentSockIndex = tmp - '0';
+			else
+				CurrentSockIndex = tmp - 'a' + 10;
+			
+			memset(RcvdBuf, 0, MAX_DATA_BUFSIZE);
+			ESC_Length_Idx = 0;
+			ESC_Data_Length = 0;
+			
+			if(Current_Sock_Type == PROTO_TCP)
 			{
-				PeerPortNum *= 10;
-				PeerPortNum += (uint16_t)(tmp - '0');
-//				sprintf((char *)DBG_Buf, "%u", PeerPortNum);
-//				Serial.println((char *)DBG_Buf);
-			}
-			else if(tmp == '\t')
-			{
-				memset(RcvdBuf, 0, 128);
-				ESC_Length_Idx = 0;
-				ESC_Data_Length = 0;
-//				sprintf((char *)DBG_Buf, "%u", PeerPortNum);
-//				Serial.println((char *)DBG_Buf);
-				
 				Current_ESC_State = WizFi2x0_ESC_CID;
-			}
-			else
-				Current_ESC_State = WizFi2x0_ESC_IDLE;
-
-		}
-		break;
-	case WizFi2x0_ESC_CID:
-		tmp = read();
-		if((tmp != spichar.SPI_IDLE_CHAR) && (tmp != spichar.SPI_INVALID_CHAR_ALL_ZERO) && (tmp != spichar.SPI_INVALID_CHAR_ALL_ONE))
-		{
-			if((tmp >= '0') && (tmp <= '9'))
-			{
-				ESC_Data_Length *= 10;
-				ESC_Data_Length += (uint16_t)(tmp - '0');
-				
-				if(++ESC_Length_Idx == 4)
-				{
-					Current_ESC_State = WizFi2x0_ESC_LENGTH;
-					ESC_Data_Idx = 0;
-					Current_ESC_Data_Length = 0;
-#ifdef DEBUG_ENABLE		
-					Serial.print("Data Length: ");
-					sprintf((char *)DBG_Buf, "%d ", ESC_Data_Length);
-					Serial.println((char *)DBG_Buf);
-#endif					
-				}
 #ifdef DEBUG_ENABLE		
 				Serial.println((char)tmp);
 #endif
 			}else
 			{
-				Current_ESC_State = WizFi2x0_ESC_IDLE;
+				Current_ESC_State = WizFi2x0_ESC_PEERIP;
+#ifdef DEBUG_ENABLE		
+				Serial.println((char)tmp);
+#endif
 			}
+		}else
+		{
+			Current_ESC_State = WizFi2x0_ESC_IDLE;
+		}
+		break;
+	case WizFi2x0_ESC_PEERIP:
+		if(((tmp >= '0') && (tmp <= '9')) || (tmp == '.'))
+			RcvdBuf[ESC_Length_Idx++] = tmp;
+		else if(tmp == ' ')
+		{
+			memcpy(PeerIPAddr, RcvdBuf, 16);
+			memset(RcvdBuf, 0, MAX_DATA_BUFSIZE);
+			ESC_Length_Idx = 0;
+			ESC_Data_Length = 0;
+			PeerPortNum = 0;
+			
+//				Serial.println((char *)PeerIPAddr);
+			Current_ESC_State = WizFi2x0_ESC_PEERPORT;
+		}
+		else
+			Current_ESC_State = WizFi2x0_ESC_IDLE;
+		break;
+	case WizFi2x0_ESC_PEERPORT:
+		if((tmp >= '0') && (tmp <= '9'))
+		{
+			PeerPortNum *= 10;
+			PeerPortNum += (uint16_t)(tmp - '0');
+		}
+		else if(tmp == '\t')
+		{
+			memset(RcvdBuf, 0, MAX_DATA_BUFSIZE);
+			ESC_Length_Idx = 0;
+			ESC_Data_Length = 0;
+			
+			Current_ESC_State = WizFi2x0_ESC_CID;
+		}
+		else
+			Current_ESC_State = WizFi2x0_ESC_IDLE;
+		break;
+	case WizFi2x0_ESC_CID:
+		if((tmp >= '0') && (tmp <= '9'))
+		{
+			ESC_Data_Length *= 10;
+			ESC_Data_Length += (uint16_t)(tmp - '0');
+			
+			if(++ESC_Length_Idx == 4)
+			{
+				Current_ESC_State = WizFi2x0_ESC_LENGTH;
+				ESC_Data_Idx = 0;
+				Current_ESC_Data_Length = 0;
+#ifdef DEBUG_ENABLE		
+				Serial.print("Data Length: ");
+				sprintf((char *)DBG_Buf, "%d ", ESC_Data_Length);
+				Serial.println((char *)DBG_Buf);
+#endif					
+			}
+#ifdef DEBUG_ENABLE		
+			Serial.println((char)tmp);
+#endif
+		}else
+		{
+			Current_ESC_State = WizFi2x0_ESC_IDLE;
 		}
 		break;
 	case WizFi2x0_ESC_LENGTH:
-		tmp = read();
-		if((tmp != spichar.SPI_IDLE_CHAR) && (tmp != spichar.SPI_INVALID_CHAR_ALL_ZERO) && (tmp != spichar.SPI_INVALID_CHAR_ALL_ONE))
-		{
-			RcvdBuf[writePtr++] = tmp;
-			Current_ESC_Data_Length++;
-			if(writePtr == 128)
-				writePtr = 0;
-			
+		RcvdBuf[writePtr++] = tmp;
+		Current_ESC_Data_Length++;
+		if(writePtr == MAX_DATA_BUFSIZE)
+			writePtr = 0;
+		
 #ifdef DEBUG_ENABLE		
-			Serial.print((char)tmp);
+		Serial.print((char)tmp);
 #endif
-			ESC_Data_Idx++;
+		ESC_Data_Idx++;
 
-			if(ESC_Data_Length > 128)
-			{
-				if(Current_ESC_Data_Length == 128)
-					IsDataRcvd[CurrentSockIndex] = true;
-			}
+		if(ESC_Data_Length > MAX_DATA_BUFSIZE)
+		{
+			if(Current_ESC_Data_Length == MAX_DATA_BUFSIZE)
+				IsDataRcvd[CurrentSockIndex] = true;
+		}
+		
+		if(ESC_Data_Idx == ESC_Data_Length)
+		{
+//#ifdef DEBUG_ENABLE		
+			memset(DBG_Buf, 0, sizeof(DBG_Buf));
+			strcpy_P((char *)DBG_Buf, (char*)pgm_read_word(&(string_table[51]))); // Necessary casts and dereferencing, just copy.
+			Serial.print((char const *)DBG_Buf);
+//#endif				
+
+			if((Current_ESC_Data_Length > 0) && (IsDataRcvd[CurrentSockIndex] == false))
+				IsDataRcvd[CurrentSockIndex] = true;
 			
-			if(ESC_Data_Idx == ESC_Data_Length)
-			{
-#ifdef DEBUG_ENABLE		
-				Serial.println("All Data Received");
-#endif				
-
-				if((Current_ESC_Data_Length > 0) && (IsDataRcvd[CurrentSockIndex] == false))
-					IsDataRcvd[CurrentSockIndex] = true;
-				
-				Current_ESC_State = WizFi2x0_ESC_IDLE;
-			}
+			Current_ESC_State = WizFi2x0_ESC_IDLE;
 		}
 		break;
 	case WizFi2x0_ESC_NOTIFY:
-		tmp = read();
-		if((tmp != spichar.SPI_IDLE_CHAR) && (tmp != spichar.SPI_INVALID_CHAR_ALL_ZERO) && (tmp != spichar.SPI_INVALID_CHAR_ALL_ONE))
+		if(tmp != ']')
+			NotifyBuf[NotifyIdx++] = tmp;
+		else
 		{
-			if(tmp != ']')
-				NotifyBuf[NotifyIdx++] = tmp;
-			else
-			{
-				NotifyBuf[NotifyIdx++] = tmp;
-				RxIdx = NotifyIdx;
+			NotifyBuf[NotifyIdx++] = tmp;
+			RxIdx = NotifyIdx;
+//#ifdef DEBUG_ENABLE		
+			memset(DBG_Buf, 0, sizeof(DBG_Buf));
+			strcpy_P((char *)DBG_Buf, (char*)pgm_read_word(&(string_table[52]))); // Necessary casts and dereferencing, just copy.
+			Serial.print((char const *)DBG_Buf);
+			Serial.println((char *)NotifyBuf);
+//#endif
+
+			ParseNotify(NotifyBuf);
+			Current_ESC_State = WizFi2x0_ESC_IDLE;
 #ifdef DEBUG_ENABLE		
-				Serial.println("Enter ParseNotify: ");
-				Serial.println((char *)NotifyBuf);
+			Serial.println("\r\nNOTIFY Message was ended");
 #endif
 
-				ParseNotify(NotifyBuf);
-				Current_ESC_State = WizFi2x0_ESC_IDLE;
-#ifdef DEBUG_ENABLE		
-				Serial.println("NOTIFY Message was ended");
-#endif
-
-			}
 		}
 		break;
 	case WizFi2x0_ESC_NOTI_OK:
@@ -1044,18 +1160,28 @@ void WizFi2x0Class::RcvPacket(void)
 	}
 }
 
+uint8_t WizFi2x0Class::ParseHTMLGet(byte *buf)
+{
+	return 1;
+}
+		
+
 uint8_t WizFi2x0Class::ParseNotify(byte *buf)
 {
 	int retval;
 	long retval32;
 	uint8_t Token[33];
+	uint8_t tmpstr[16];
+
+	memset(tmpstr, 0, 16);
+       strcpy_P((char *)tmpstr, (char*)pgm_read_word(&(string_table[46]))); // Necessary casts and dereferencing, just copy.
 	
 	Current_Ptr = 0;
 	retval = GetToken(buf, Token);
 #ifdef DEBUG_ENABLE		
 	Serial.println((char *)Token);
 #endif
-	if(!strcmp((char const*)Token, "DISCONNECT"))
+	if(!strcmp((char const*)Token, (const char *)tmpstr))
 	{
 		retval = GetToken(buf, Token);
 #ifdef DEBUG_ENABLE		
@@ -1074,7 +1200,12 @@ uint8_t WizFi2x0Class::ParseNotify(byte *buf)
 			
 			return 1;
 		}
-	}else if(!strcmp((char const*)Token, "CONNECT"))
+	}
+
+	memset(tmpstr, 0, 16);
+       strcpy_P((char *)tmpstr, (char*)pgm_read_word(&(string_table[45]))); // Necessary casts and dereferencing, just copy.
+       
+	if(!strcmp((char const*)Token, (const char *)tmpstr))
 	{
 		retval = GetToken(buf, Token);
 		if(retval == -1)
@@ -1126,17 +1257,74 @@ uint8_t WizFi2x0Class::ParseNotify(byte *buf)
 
 		return 1;
 		
-	}else if(!strcmp((char const*)Token, "ERROR"))
+	}
+
+	if(!strcmp((char const*)Token, "[ERROR"))
 	{
 		NOTI_TYPE = SOCKFAILURE_NOTI;
 		
 		return 1;
-	}else
-	{
-		NOTI_TYPE = INVALID_NOTI;
+	}
 
+	memset(tmpstr, 0, 16);
+       strcpy_P((char *)tmpstr, (char*)pgm_read_word(&(string_table[47]))); // Necessary casts and dereferencing, just copy.
+
+	if(!strcmp((char const*)Token, (const char *)tmpstr))
+	{
+		NOTI_TYPE = NO_NOTI;
+		bAssociated = false;
+		Serial.println("Disassocated!");
+		
 		return 1;
 	}
+
+	memset(tmpstr, 0, 16);
+       strcpy_P((char *)tmpstr, (char*)pgm_read_word(&(string_table[48]))); // Necessary casts and dereferencing, just copy.
+       
+	if( !strcmp((char const*)Token, (const char *)tmpstr))
+	{
+		NOTI_TYPE = NO_NOTI;
+		bAssociated = false;
+		Serial.println("Disassocated!");
+		
+		return 1;
+	}
+
+	NOTI_TYPE = INVALID_NOTI;
+
+	return 1;
+}
+
+boolean WizFi2x0Class::IsNotifyMessage(byte *buf)
+{
+	uint8_t tmpstr[16];
+
+	memset(tmpstr, 0, 16);
+       strcpy_P((char *)tmpstr, (char*)pgm_read_word(&(string_table[45]))); // Necessary casts and dereferencing, just copy.
+
+	if((strstr((char const*)buf, (const char *)tmpstr) != NULL) && (strlen((char const*)buf) > 13))
+		return true;
+
+	memset(tmpstr, 0, 16);
+       strcpy_P((char *)tmpstr, (char*)pgm_read_word(&(string_table[46]))); // Necessary casts and dereferencing, just copy.
+
+	if(strstr((char const*)buf, (const char *)tmpstr) != NULL)
+		return true;
+	
+	memset(tmpstr, 0, 16);
+       strcpy_P((char *)tmpstr, (char*)pgm_read_word(&(string_table[47]))); // Necessary casts and dereferencing, just copy.
+
+	if(strstr((char const*)buf, (const char *)tmpstr) != NULL)
+		return true;
+
+	memset(tmpstr, 0, 16);
+       strcpy_P((char *)tmpstr, (char*)pgm_read_word(&(string_table[48]))); // Necessary casts and dereferencing, just copy.
+
+	if(strstr((char const*)buf, (const char *)tmpstr) != NULL)
+		return true;
+
+
+	return false;
 }
 
 #ifdef LINE_PARSE
@@ -1159,9 +1347,9 @@ uint8_t WizFi2x0Class::CheckReply(uint8_t command)
 			{
 				if(RxIdx > 0)
 				{
-#ifdef DEBUG_ENABLE		
+//#ifdef DEBUG_ENABLE		
 					Serial.println((char *)MsgBuf);
-#endif
+//#endif
 					retval = ParseReply(MsgBuf, command);
 					memset(MsgBuf, 0, sizeof(MsgBuf));
 					RxIdx = 0;
@@ -1242,6 +1430,8 @@ uint8_t WizFi2x0Class::ParseReply(byte * buf, uint8_t command)
 	
 	switch(command)
 	{
+	case OP_PING:
+		break;
 	case OP_AT: 
 	case OP_ATE:
 	case OP_WD:
@@ -1263,6 +1453,8 @@ uint8_t WizFi2x0Class::ParseReply(byte * buf, uint8_t command)
 	case OP_NMAC:
 	case OP_DHCPSRVR:
 	case OP_WAUTH:
+	case OP_ATI2:
+	case OP_ATXDO:
 		Current_Ptr = 0;
 		retval = GetToken(buf, Token);
 		while(1)
@@ -1286,9 +1478,10 @@ uint8_t WizFi2x0Class::ParseReply(byte * buf, uint8_t command)
 	case OP_DNSLOOK:
 		Current_Ptr = 0;
 		retval = GetToken(buf, Token);
-#ifdef DEBUG_ENABLE		
-		Serial.println((char *)buf);
-#endif
+//#ifdef DEBUG_ENABLE		
+		Serial.print("Token: ");
+		Serial.println((char *)Token);
+//#endif
 		while(1)
 		{
 			if(retval == -1)
@@ -1296,18 +1489,28 @@ uint8_t WizFi2x0Class::ParseReply(byte * buf, uint8_t command)
 			switch(Current_ReplyState)
 			{
 			case WizFi2x0_ReplyState_IDLE:
-				if(!strcmp((char const *)Token, "IP:"))
-					Current_ReplyState = WizFi2x0_ReplyState_IP_HEAD;
-				break;
-			case WizFi2x0_ReplyState_IP_HEAD:
-				SetPeerIPAddr(Token);
-				Current_ReplyState = WizFi2x0_ReplyState_IP;
+				if(!strcmp((char const *)Token, "IP"))
+				{
+					retval = GetToken(buf, Token);
+//#ifdef DEBUG_ENABLE		
+					Serial.print("Token: ");
+//#endif
+					SetPeerIPAddr(Token);
+					Current_ReplyState = WizFi2x0_ReplyState_IP;
+					return 0;
+				}
 				break;
 			case WizFi2x0_ReplyState_IP:
 				if(!strcmp((char const*)Token, "[OK]"))
+				{
+					Serial.println("[OK] receive");
 					return 1;
+				}
 				else if(!strcmp((char const *)Token, "[ERROR]"))
+				{
+					Serial.println("[ERROR] receive");
 					return 2;
+				}
 				break;
 			}
 			retval = GetToken(buf, Token);
@@ -2001,7 +2204,7 @@ int WizFi2x0Class::GetToken(byte * buf, uint8_t * Token)
 	while(Current_Ptr <= RxIdx)
 	{
 		
-		if(buf[Current_Ptr] != ',' && buf[Current_Ptr] != ' ' && buf[Current_Ptr] != '\t' && buf[Current_Ptr] != 0x0D && buf[Current_Ptr] != 0x0A && buf[Current_Ptr] != '\0')
+		if(buf[Current_Ptr] != ',' && buf[Current_Ptr] != ' ' && buf[Current_Ptr] != '\t' && (buf[Current_Ptr] != ':')&& buf[Current_Ptr] != 0x0D && buf[Current_Ptr] != 0x0A && buf[Current_Ptr] != '\0')
 		{
 			Token[i++] = buf[Current_Ptr++];
 		}
@@ -2106,16 +2309,13 @@ uint8_t WizFi2x0Class::CheckSyncReply(void)
 {
 	byte key;
 
-	key = read();
-	if((key != spichar.SPI_IDLE_CHAR) && ( key != spichar.SPI_INVALID_CHAR_ALL_ZERO) && (key != spichar.SPI_INVALID_CHAR_ALL_ONE))
+
+	while(digitalRead(WizFi2x0_DataReady) == HIGH)
 	{
-		;
+		key = read();
+		if(key == spichar.SPI_IDLE_CHAR)
+			return 1;
 	}
-
-	if(digitalRead(WizFi2x0_DataReady) == LOW)
-		return 1;
-
-	delay(10); // wait during 10ms
 	
 	return 0;
 }
@@ -2140,6 +2340,78 @@ boolean WizFi2x0Class::ByteStuff(byte *ch)
 	}else
 		return false;
 }
+
+uint8_t WizFi2x0Class::RevByteStuff(byte *buf)
+{
+	char DBG_Buf[10];
+	
+	if(SPIRxFreeBuf < MAX_SPI_BUFSIZE)
+	{
+		*buf = SPI_Read_RxBuf();
+
+#if 0
+		memset(DBG_Buf, 0, 10);
+		sprintf((char *)DBG_Buf, "{%02X}", *buf);
+		Serial.print((char *)DBG_Buf);
+#endif
+
+		if(*buf == spichar.SPI_ESC_CHAR)
+		{
+			bByteStuff = true;
+			return 0;
+		}else if(*buf == spichar.SPI_IDLE_CHAR)
+		{
+			return 0;
+		}else if(*buf == spichar.SPI_INVALID_CHAR_ALL_ONE)
+		{
+			printf("\r\nSPI_INVALID_CHAR_ALL_ONE received\r\n");
+			ConsecutiveSpecialCharCount++;			
+			if(ConsecutiveSpecialCharCount > 20)
+				SendSync();
+			return 0;
+		}else if(*buf == spichar.SPI_INVALID_CHAR_ALL_ZERO)
+		{
+			ConsecutiveSpecialCharCount++;			
+			if(ConsecutiveSpecialCharCount > 20)
+				SendSync();
+			printf("\r\nSPI_INVALID_CHAR_ALL_ZERO received\r\n");
+			return 0;
+		}else if(*buf == spichar.SPI_XOFF_CHAR)
+		{
+			printf("\r\nSPI_XOFF_CHAR received\r\n");
+			ConsecutiveSpecialCharCount++;			
+			if(ConsecutiveSpecialCharCount > 20)
+				SendSync();
+			return 0;
+		}else if(*buf == spichar.SPI_XON_CHAR)
+		{
+			printf("\r\nSPI_XON_CHAR received\r\n");
+			ConsecutiveSpecialCharCount++;			
+			if(ConsecutiveSpecialCharCount > 20)
+				SendSync();
+			return 0;
+		}else if(*buf == spichar.SPI_LINK_READY)
+		{
+			printf("\r\nSPI_LINK_READY received\r\n");
+			ConsecutiveSpecialCharCount++;			
+			if(ConsecutiveSpecialCharCount > 20)
+				SendSync();
+			return 0;
+		}
+		
+		ConsecutiveSpecialCharCount = 0;			
+		
+		if(bByteStuff)
+		{
+			*buf = *buf^0x20;
+			bByteStuff = false;
+		}
+		return 1;
+	}
+
+	return 0;
+}
+
 
 void WizFi2x0Class::StrToStr(byte * dst, byte * src, size_t size)
 {
@@ -2242,6 +2514,7 @@ void WizFi2x0Class::GetDNSIPAddr(byte *buf1, byte *buf2)
 	StrToStr(buf2, &DNSIPAddr[1][0], 16);
 }
 */
+
 
 void WizFi2x0Class::SetSrcPortnum(unsigned int portnum)
 {
@@ -2424,6 +2697,53 @@ long WizFi2x0Class::StrToInt(byte *buf)
 		}else
 			return -1;
 		i++;
+	}
+}
+
+void WizFi2x0Class::SPI_Write_RxBuf(uint8_t byte)
+{
+	if(SPIRxFreeBuf > 0)
+	{
+		SPI_RX_Buf[SPI_Rx_wr_ptr++] = byte;
+		SPIRxFreeBuf--;
+
+		if(SPI_Rx_wr_ptr >= MAX_SPI_BUFSIZE)
+			SPI_Rx_wr_ptr -= MAX_SPI_BUFSIZE;
+	}
+}
+
+uint8_t WizFi2x0Class::SPI_Read_RxBuf(void)
+{
+	uint8_t ch = spichar.SPI_IDLE_CHAR;
+	
+	if(SPIRxFreeBuf < MAX_SPI_BUFSIZE)
+	{
+		ch = SPI_RX_Buf[SPI_Rx_rd_ptr++];
+		SPIRxFreeBuf++;
+
+		if(SPI_Rx_rd_ptr >= MAX_SPI_BUFSIZE)
+			SPI_Rx_rd_ptr -= MAX_SPI_BUFSIZE;
+	}
+
+	return ch;
+}
+
+uint8_t WizFi2x0Class::readbytefromSPI(void)
+{
+	if(digitalRead(WizFi2x0_DataReady) == HIGH)
+	{
+		SPI_Write_RxBuf(read());
+	}
+}
+
+void WizFi2x0Class::storebytetoSPIBuf(uint8_t byte)
+{
+	if(digitalRead(WizFi2x0_DataReady) == HIGH)
+	{
+//			memset(DBG_Buf, 0, 5);
+//			sprintf((char *)DBG_Buf, "{%02X}", byte);
+//			Serial.print((char *)DBG_Buf);
+		SPI_Write_RxBuf(byte);
 	}
 }
 

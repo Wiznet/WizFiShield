@@ -166,8 +166,11 @@ uint8_t WizFiClient::connect()
 	{
 		WizFi->SetDomainName((byte *)DstDomain);
 		WizFi->Current_Command_Code = OP_DNSLOOK;
+		WizFi->CmdResult = CMD_AVAILABLE;
+		WizFi->Current_ReplyState = WizFi2x0_ReplyState_IDLE;
 		while(1)
 		{
+			WizFi->RcvPacket();
 			retval = WizFi->SendCommand(WizFi->Current_Command_Code);
 			if(retval == 1)
 			{
@@ -191,6 +194,8 @@ uint8_t WizFiClient::connect()
 	}
 	
 	WizFi->Current_Command_Code = OP_NCTCP;
+	WizFi->CmdResult = CMD_AVAILABLE;
+	WizFi->Current_ReplyState = WizFi2x0_ReplyState_IDLE;
 //	memset(tmpstr, 0, sizeof(tmpstr));
 //	sprintf((char *)tmpstr, "%d.%d.%d.%d", DstIP[0], DstIP[1], DstIP[2], DstIP[3]);
 //	Serial.println((char *)tmpstr);
@@ -206,6 +211,7 @@ uint8_t WizFiClient::connect()
 	WizFi->SetPeerPortnum(DstPort);
 	while(1)
 	{
+		WizFi->RcvPacket();
 		retval = WizFi->SendCommand(WizFi->Current_Command_Code);
 
 		if(retval == 1)
@@ -246,9 +252,15 @@ uint8_t WizFiClient::disconnect()
 
 	WizFi->Current_Command_Code = OP_NCLOSE;
 	WizFi->CID = CID;
-	
+	WizFi->CmdResult = CMD_AVAILABLE;
+	WizFi->Current_ReplyState = WizFi2x0_ReplyState_IDLE;
+	WizFi->Current_CmdState = WizFi2x0_CmdState_IDLE;
+
+//	Serial.println("disconnect() called");	
+
 	while(1)
 	{
+		WizFi->RcvPacket();
 		retval = WizFi->SendCommand(WizFi->Current_Command_Code);
 
 		if(retval == 1)
@@ -431,7 +443,28 @@ void WizFiClient::write(byte *buf, size_t size)
 
 uint8_t WizFiClient::read(void)
 {
-	return WizFi->read();
+	uint8_t index, i=0;
+	byte DBG_Buf[10], buf;
+
+	index = CID - '0';
+
+
+//	WizFi->RcvPacket();
+
+	if(WizFi->IsDataRcvd[index])
+	{		
+		if(WizFi->Current_ESC_Data_Length > 0)
+		{
+			buf = WizFi->RcvdBuf[WizFi->readPtr];
+			WizFi->RcvdBuf[WizFi->readPtr++] = '\0';
+			if(WizFi->readPtr == MAX_DATA_BUFSIZE)
+				WizFi->readPtr = 0;
+			WizFi->Current_ESC_Data_Length--;
+		}
+
+		return buf;
+	}
+	return 0;
 }
 
 uint8_t WizFiClient::read(byte *buf)
@@ -448,8 +481,10 @@ uint8_t WizFiClient::read(byte *buf)
 	{		
 		while(WizFi->Current_ESC_Data_Length > 0)
 		{
-			buf[i++] = WizFi->RcvdBuf[WizFi->readPtr++];
-			if(WizFi->readPtr == 128)
+			buf[i++] = WizFi->RcvdBuf[WizFi->readPtr];
+			WizFi->RcvdBuf[WizFi->readPtr++] = '\0';
+			
+			if(WizFi->readPtr == MAX_DATA_BUFSIZE)
 				WizFi->readPtr = 0;
 			WizFi->Current_ESC_Data_Length--;
 		}
@@ -474,7 +509,8 @@ uint8_t WizFiClient::read(byte *buf, size_t size)
 	{
 		while(WizFi->readPtr != WizFi->writePtr)
 		{
-			buf[i++] = WizFi->RcvdBuf[WizFi->readPtr++];
+			buf[i++] = WizFi->RcvdBuf[WizFi->readPtr];
+			WizFi->RcvdBuf[WizFi->readPtr++] = '\0';
 		}
 		WizFi->IsDataRcvd[index] = false;
 

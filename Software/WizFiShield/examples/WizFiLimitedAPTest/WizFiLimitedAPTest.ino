@@ -1,5 +1,5 @@
 /******************************************************************
- WizFi2x0 Shield test code for Arduino Uno
+ WizFiShield Limitted AP Test Example
  
  Circuit:
  WizFi2x0 connected to Arduino via SPI
@@ -15,9 +15,12 @@
  Created 18 Sep. 2012
  by James YS Kim  (jameskim@wiznet.co.kr, javakys@gmail.com)
 
+ Modified 27 May. 2013
+ by Jinbuhm Kim  (jbkim@wiznet.co.kr, jinbuhm.kim@gmail.com)
+
 *****************************************************************/
 
-// WizFi210 communicates using SPI, so include the SPI library:
+// WizFiShield communicates using SPI, so include the SPI library:
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,19 +32,17 @@
 byte IsTimer1Expired = 0;
 uint16_t CurrentTime = 0;
 
-#define SSID 		"LimitedAP"        // SSID of your AP
-#define Key 	        "1234567890"    // Key or Passphrase
+#define SSID 		"LimitedAP"     // SSID of WizFiShield
+#define Key 	  "1234567890"    // Key or Passphrase
+// Wi-Fi security option (NO_SECURITY, WEP_SECURITY)
+#define Security        WEP_SECURITY
 
-unsigned char  SIP[4] 	        = {192, 168, 55, 2};
+unsigned char  SIP[4] 	= {192, 168, 1, 100}; // specify the peer's IP address to communicate
 unsigned int ServerPort = 5000;
 
 WizFi2x0Class myWizFi;
 WizFiClient myClient;
 TimeoutClass ConnectInterval;
-
-SPIChar spichar;
-
-// pins used for the connection with the WizFi210
 
 boolean Wifi_setup = false;
 boolean ConnectionState = false;
@@ -52,8 +53,6 @@ boolean Connect_flag = false;
 // 1msec Timer
 void Timer1_ISR()
 {
-  uint8_t i;
-  
   myWizFi.ReplyCheckTimer.CheckIsTimeout();
 }
 //
@@ -67,7 +66,7 @@ void setup() {
   Serial.begin(9600);
   Serial.println("\r\nSerial Init");
   
-  // initalize WizFi2x0 module:
+  // initalize WizFiShield:
   myWizFi.begin();
   myClient =  WizFiClient(SIP, ServerPort);
    
@@ -75,29 +74,30 @@ void setup() {
   Timer1.initialize(1000); // 1msec
   Timer1.attachInterrupt(Timer1_ISR);
 
-  myWizFi.SetSrcIPAddr((byte *)"192.168.55.1");
+  myWizFi.SetSrcIPAddr((byte *)"192.168.1.99");  // set the IP address of Limited AP
   myWizFi.SetSrcSubnet((byte *)"255.255.255.0");
-  myWizFi.SetSrcGateway((byte *)"192.168.55.1");
+  myWizFi.SetSrcGateway((byte *)"192.168.1.99");
   
   myWizFi.SetOperatingMode(LIMITEDAP_MODE);
  
   myWizFi.SendSync();
-  myWizFi.ReplyCheckTimer.TimerStart(1000);
+  myWizFi.ReplyCheckTimer.TimerStart(3000);
   
-//  Serial.println("Send Sync data");
-  
+  Serial.println("Send Sync data");
   while(1)
   {
     if(myWizFi.CheckSyncReply())
     {
       myWizFi.ReplyCheckTimer.TimerStop();
-//      Serial.println("Rcvd Sync data");
+      Serial.println("Rcvd Sync data");
       break;
     }
     if(myWizFi.ReplyCheckTimer.GetIsTimeout())
     {
-//      Serial.println("Rcving Sync Timeout!!");
-      return;
+      Serial.println("Rcving Sync Timeout!!");
+      // Nothing to do forever;
+      for(;;)
+      ;
     }
   }
 
@@ -105,10 +105,10 @@ void setup() {
   // AP association  
   while(1)
   {
-    retval = myWizFi.associate(SSID, Key, WEP_SECURITY, false);
+    retval = myWizFi.associate(SSID, Key, Security, false);
     
     if(retval == 1){
-      Serial.println("WizFi2x0 AP Associated");
+      Serial.println("AP association Success");
       Wifi_setup = true;
       break;
     }else{
@@ -122,16 +122,12 @@ void setup() {
   
   delay(1000);
   Serial.flush();
-  
-//  myClient.connect();
 }
 
 void loop()
 {
-  uint8_t retval, i;
+  uint8_t retval;
   byte rcvdBuf[129];
-  byte cmd;
-  byte TxBuf[100];
  
   memset(rcvdBuf, 0, 129);
   

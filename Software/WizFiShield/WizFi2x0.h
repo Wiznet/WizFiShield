@@ -9,9 +9,6 @@
 //extern WizFiClient myClient;
 //prog_uchar WizFi2x0_RST PROGMEM = 2;   // "String 0" etc are strings to store - change to suit.
 
-#define WizFi2x0_RST			2
-#define WizFi2x0_DataReady	3
-#define WizFi2x0_CS			4
 
 #define WizFi2x0_CmdState_IDLE	0x01
 #define WizFi2x0_CmdState_Sent	0x02
@@ -50,6 +47,10 @@
 #define WizFi2x0_ReplyState_NOofAP		0x0E
 #define WizFi2x0_ReplyState_WaitOK		0x0F
 
+#define MAX_SPI_BUFSIZE	64
+
+#define MAX_DATA_BUFSIZE	64
+
 enum CMDOP {
 	OP_AT = 1, 
 	OP_ATE = 2, 
@@ -81,7 +82,10 @@ enum CMDOP {
 	OP_NMAC = 28,
 	OP_WAUTH = 29,
 	OP_NCUDP = 30,
-	OP_NSUDP = 31
+	OP_NSUDP = 31,
+	OP_PING = 32,
+	OP_ATI2 = 33,
+	OP_ATXDO = 34
 };
 
 enum CONNTYPE{
@@ -122,6 +126,13 @@ enum OPMODE{
 	LIMITEDAP_MODE =2
 };
 
+enum CMD_STATE{
+	CMD_FAILED = 0,
+	CMD_SUCCEEDED = 1,
+	CMD_SENT = 2,
+	CMD_AVAILABLE = 3
+};
+
 class SPIChar
 {
 public:
@@ -154,11 +165,12 @@ public:
 class WizFi2x0Class
 {
 public:
-	byte MsgBuf[128];
+	byte MsgBuf[MAX_DATA_BUFSIZE];
 	uint16_t RxIdx;
 	uint8_t SendByte;
 	uint8_t retryCount;
-	byte RcvdBuf[128];
+	byte RcvdBuf[MAX_DATA_BUFSIZE];
+	byte SPI_RX_Buf[MAX_SPI_BUFSIZE];
 	boolean IsDataRcvd[MAX_SOCK_NUM];
 	boolean SockAvailable[MAX_SOCK_NUM];
 	uint8_t readPtr;
@@ -206,6 +218,8 @@ public:
 	char Scan_SECURITY[16];
 	bool Scan_AP;
 
+	CMD_STATE CmdResult;
+
 private:
 	boolean bAssociated;
 	boolean bCommandMode;
@@ -230,6 +244,16 @@ private:
 	
 	uint8_t OperatingMode;
 
+       uint8_t WizFi2x0_RST;
+	uint8_t WizFi2x0_DataReady;
+	uint8_t WizFi2x0_CS;
+	uint8_t lastCommand;
+	bool bByteStuff;
+	uint8_t ConsecutiveSpecialCharCount;
+
+	uint16_t SPIRxFreeBuf;
+	uint16_t SPI_Rx_rd_ptr;
+	uint16_t SPI_Rx_wr_ptr;
 	
 private:
 	uint8_t SendCommand(uint8_t command);
@@ -248,11 +272,16 @@ private:
 	virtual uint8_t read(byte *buf);
 	virtual uint8_t read(byte *buf, size_t size);
 	boolean ByteStuff(byte *str);
+	uint8_t RevByteStuff(byte *buf);
+	
 	int GetToken(byte * buf, uint8_t * Token);
 	void BufClear(void);
 
 
+	uint8_t ParseHTMLGet(byte *buf);
+	
 	uint8_t ParseNotify(byte *buf);
+	boolean IsNotifyMessage(byte *buf);
 
 	bool CheckRSSIPower(uint8_t value, char * buf);
 
@@ -274,14 +303,21 @@ private:
 	int SetIP(uint8_t* IP, byte * buf);
 
 	uint8_t wifi_scan(void);
-	
+
+	void SPI_Write_RxBuf(uint8_t byte);
+	uint8_t SPI_Read_RxBuf(void);
+	uint8_t readbytefromSPI(void);
+	void storebytetoSPIBuf(uint8_t byte);
 public:
 	WizFi2x0Class();
+	void SetPinMap(uint8_t tmpRST, uint8_t tmpRDY, uint8_t tmpCS);
 	void begin(void);
 	uint8_t associate(void);
 	uint8_t associate(const char *ssid, const char *passphrase, SECUTYPE EncryptType, boolean isDHCP);
 	uint8_t disassociate(void);
 	boolean IsAssociated(void);
+
+	uint8_t send_ping(byte *buf);
 	
 	void SetOperatingMode(OPMODE mode);
 	

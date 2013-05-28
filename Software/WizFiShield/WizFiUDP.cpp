@@ -97,8 +97,11 @@ uint8_t WizFiUDP::open(void)
 	{
 		WizFi->SetDomainName((byte *)DstDomain);
 		WizFi->Current_Command_Code = OP_DNSLOOK;
+		WizFi->CmdResult = CMD_AVAILABLE;
+		
 		while(1)
 		{
+			WizFi->RcvPacket();
 			retval = WizFi->SendCommand(WizFi->Current_Command_Code);
 			if(retval == 1)
 			{
@@ -140,8 +143,11 @@ uint8_t WizFiUDP::open(void)
 	WizFi->SetPeerIPAddr(tmpstr);
 	WizFi->SetPeerPortnum(DstPort);
 	WizFi->SetSrcPortnum(SrcPort);
+	WizFi->CmdResult = CMD_AVAILABLE;
+	
 	while(1)
 	{
+		WizFi->RcvPacket();
 		retval = WizFi->SendCommand(WizFi->Current_Command_Code);
 
 		if(retval == 1)
@@ -181,9 +187,11 @@ uint8_t WizFiUDP::close()
 
 	WizFi->Current_Command_Code = OP_NCLOSE;
 	WizFi->CID = CID;
+	WizFi->CmdResult = CMD_AVAILABLE;
 	
 	while(1)
 	{
+		WizFi->RcvPacket();
 		retval = WizFi->SendCommand(WizFi->Current_Command_Code);
 
 		if(retval == 1)

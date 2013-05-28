@@ -1,8 +1,10 @@
 /******************************************************************
- WizFi2x0 Shield test code for Arduino Uno
+ WizFiShield Web Client Test Example
+ 
+ This sketch connect to a website(http://www.google.com) using WizFi Shield
  
  Circuit:
- WizFi2x0 connected to Arduino via SPI
+ WizFiShield connected to Arduino via SPI
  
  RST: pin 2  // Output
  DRDY: pin 3  // Input
@@ -11,13 +13,16 @@
  MOSI: pin 11  // output
  MISO: pin 12  // input
  SCK: pin 13  // out
- 
+
  Created 18 Sep. 2012
  by James YS Kim  (jameskim@wiznet.co.kr, javakys@gmail.com)
+ 
+ Modified 27 May. 2013
+ by Jinbuhm Kim  (jbkim@wiznet.co.kr, jinbuhm.kim@gmail.com)
 
 *****************************************************************/
 
-// WizFi210 communicates using SPI, so include the SPI library:
+// WizFiShield communicates using SPI, so include the SPI library:
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,43 +31,30 @@
 #include <WizFiClient.h>
 #include <TimerOne.h>
 
-byte IsTimer1Expired = 0;
-uint16_t CurrentTime = 0;
-
-#define SSID 		""        // SSID of your AP
-#define Key 	        ""    // Key or Passphrase
-//#define Key 	        ""    // Key or Passphrase
+#define SSID    ""        // SSID of your AP
+#define Key     ""  // Key or Passphrase
+// Wi-Fi security option (NO_SECURITY, WEP_SECURITY, WPA_SECURITY, WPA2PSK_SECURITY)
+//#define Security        WPA_SECURITY
 
 WizFi2x0Class myWizFi;
 WizFiClient myClient;
 TimeoutClass ConnectInterval;
 
-SPIChar spichar;
-
-// pins used for the connection with the WizFi210
-
 boolean Wifi_setup = false;
-boolean ConnectionState = false;
-boolean Disconnect_flag = false;
-boolean Connect_flag = false;
 
 ///////////////////////////////
 // 1msec Timer
 void Timer1_ISR()
 {
-  uint8_t i;
-  
   myWizFi.ReplyCheckTimer.CheckIsTimeout();
 }
 //
 //////////////////////////////
 
 void setup() {
-  byte key, retval, i;
-  byte retry_count = 0;
-  byte tmpstr[64];
+  byte retval;
   
-  Serial.begin(57600);
+  Serial.begin(9600);
   Serial.println("\r\nSerial Init");
   
   // initalize WizFi2x0 module:
@@ -78,7 +70,7 @@ void setup() {
   Timer1.attachInterrupt(Timer1_ISR);
  
   myWizFi.SendSync();
-  myWizFi.ReplyCheckTimer.TimerStart(1000);
+  myWizFi.ReplyCheckTimer.TimerStart(3000);
   
   Serial.println("Send Sync data");
   
@@ -93,18 +85,19 @@ void setup() {
     if(myWizFi.ReplyCheckTimer.GetIsTimeout())
     {
       Serial.println("Rcving Sync Timeout!!");
-      return;
+      // Nothing to do forever;
+      for(;;)
+      ;
     }
   }
-
   ////////////////////////////////////////////////////////////////////////////
   // AP association  
   while(1)
   {
-    retval = myWizFi.associate(SSID, Key, WEP_SECURITY, true);
+    retval = myWizFi.associate(SSID, Key, Security, true);
     
     if(retval == 1){
-      Serial.println("WizFi2xo AP Associated");
+      Serial.println("AP association Success");
       Wifi_setup = true;
       break;
     }else{
@@ -116,10 +109,8 @@ void setup() {
 
 void loop()
 {
-  uint8_t retval, i;
+  uint8_t retval;
   byte rcvdBuf[129];
-  byte cmd;
-  byte TxBuf[100];
  
   memset(rcvdBuf, 0, 129);
   
@@ -133,38 +124,14 @@ void loop()
          Serial.print((char *)rcvdBuf);
        }
      }else{
-       if(Connect_flag)
-       {
          retval = myClient.connect();
          if(retval == 1)
          {
-           Connect_flag = false;
            Serial.println("Connected! ");
            myClient.write((byte *)"GET /search?q=WizFi210 HTTP/1.0\r\n\r\n");
          }else
            Serial.println("Connection Failed");
        }
-     }
-     CheckConsoleInput();
   }
 }
 
-void CheckConsoleInput(void)
-{
-  uint8_t ch;
-  
-  if(Serial.available() > 0)
-    ch = Serial.read();
-    
-  switch(ch)
-  {
-  case 'd':
-  case 'D':
-    Disconnect_flag = true;
-    break;
-  case 'c':
-  case 'C':
-    Connect_flag = true;
-    break;
-  }
-}

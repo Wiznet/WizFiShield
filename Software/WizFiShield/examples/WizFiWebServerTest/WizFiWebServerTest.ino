@@ -1,5 +1,7 @@
 /******************************************************************
- WizFi2x0 Shield test code for Arduino Uno
+ WizFiShield Web Server Test Example
+ 
+ A simple web server that shows "Hello World" string 
  
  Circuit:
  WizFi2x0 connected to Arduino via SPI
@@ -14,6 +16,9 @@
  
  Created 27 Sep. 2012
  by James YS Kim  (jameskim@wiznet.co.kr, javakys@gmail.com)
+ 
+ Modified 27 May. 2013
+ by Jinbuhm Kim  (jbkim@wiznet.co.kr, jinbuhm.kim@gmail.com)
 
 *****************************************************************/
 
@@ -27,65 +32,47 @@
 #include <WizFiServer.h>
 #include <TimerOne.h>
 
-byte IsTimer1Expired = 0;
-uint16_t CurrentTime = 0;
-
-#define SSID 		""        // SSID of your AP
-#define Key 	        ""    // Key or Passphrase
+#define SSID    ""        // SSID of your AP
+#define Key     ""  // Key or Passphrase
+// Wi-Fi security option (NO_SECURITY, WEP_SECURITY, WPA_SECURITY, WPA2PSK_SECURITY)
+//#define Security        WPA_SECURITY
 
 #define MAX_SOCK_NUM    4
 
-unsigned char  SIP[4] 	        = {192, 168, 123, 119};
-unsigned int ServerPort = 5000;
 unsigned int SrcPort = 80;
 
 WizFi2x0Class myWizFi;
 WizFiClient myClient[MAX_SOCK_NUM];//(SIP, ServerPort);
 WizFiServer myServer(SrcPort);
 
-SPIChar spichar;
-
-// pins used for the connection with the WizFi210
-
 boolean Wifi_setup = false;
-boolean ConnectionState = false;
-boolean Disconnect_flag = false;
-boolean Connect_flag = false;
 
 ///////////////////////////////
 // 1msec Timer
 void Timer1_ISR()
 {
-  uint8_t i;
-  
   myWizFi.ReplyCheckTimer.CheckIsTimeout();
 }
 //
 //////////////////////////////
 
 void setup() {
-  byte key, retval, i;
-  byte retry_count = 0;
-  byte tmpstr[64];
+  byte retval, i;
   
-  Serial.begin(57600);
+  Serial.begin(9600);
   Serial.println("\r\nSerial Init");
   
   for(i=0; i<MAX_SOCK_NUM; i++)
     myClient[i] =  WizFiClient();
-//  myServer = WizFiServer(5000);
-  // initalize WizFi2x0 module:
+
   myWizFi.begin();
  
- 
-  // Socket Creation with Server IP address and Server Port num 
-  
   // Timer1 Initialize
   Timer1.initialize(1000); // 1msec
   Timer1.attachInterrupt(Timer1_ISR);
  
   myWizFi.SendSync();
-  myWizFi.ReplyCheckTimer.TimerStart(1000);
+  myWizFi.ReplyCheckTimer.TimerStart(3000);
 
   Serial.println("Send Sync data");
   
@@ -110,7 +97,7 @@ void setup() {
   {
     byte tmpstr[32];
     
-    retval = myWizFi.associate(SSID, Key, WEP_SECURITY, true);
+    retval = myWizFi.associate(SSID, Key, Security, true);
     
     if(retval == 1){
       myWizFi.GetSrcIPAddr(tmpstr);
@@ -134,9 +121,6 @@ void loop()
 {
   uint8_t retval, i;
   byte rcvdBuf[129];
-  byte cmd;
-  byte TxBuf[100];
-  char ch;
  
   memset(rcvdBuf, 0, 129);
    
@@ -160,7 +144,7 @@ void loop()
              myClient[i].write((byte *)"HTTP/1.1 200 OK\r\n");
              myClient[i].write((byte *)"Content-Type: text/html\r\n");
              myClient[i].write((byte *)"\r\n");
-             myClient[i].write((byte *)"Hello world\r\n");
+             myClient[i].write((byte *)"Hello World !\r\n");
            
              delay(100);
              myClient[i].disconnect();
@@ -169,25 +153,6 @@ void loop()
        }
     }
   }
-//  CheckConsoleInput();
 }
 
-void CheckConsoleInput(void)
-{
-  uint8_t ch;
-  
-  if(Serial.available() > 0)
-    ch = Serial.read();
-    
-  switch(ch)
-  {
-  case 'd':
-  case 'D':
-    Disconnect_flag = true;
-    break;
-  case 'c':
-  case 'C':
-    Connect_flag = true;
-    break;
-  }
-}
+

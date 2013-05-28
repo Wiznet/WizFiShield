@@ -23,8 +23,11 @@ uint8_t WizFiServer::begin()
 	
 	WizFi->Current_Command_Code = OP_NSTCP;
 	WizFi->SetSrcPortnum(src_port);
+	WizFi->CmdResult = CMD_AVAILABLE;
+	
 	while(1)
 	{
+		WizFi->RcvPacket();
 		retval = WizFi->SendCommand(WizFi->Current_Command_Code);
 
 		if(retval == 1)
