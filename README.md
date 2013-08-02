@@ -25,13 +25,19 @@ Example codes are as below.
 - UDP server test
 - Web client test
 - Web server test
+- Remote Car control example : [link](http://blog.wiznet.co.kr/controlling-rc-car-with-wizfi-shield/)
 
-* TimerOne : Timer 1 ISR library
+
+TimerOne : Timer 1 ISR library
 
 ## Documents
 Manual for WizFi shield (Korean & English version)
 
 ## Revision History
+Update Release : 2 August 2013
+
+- Fix bug: SPI & PWM control pin conflict
+
 Update Release : 28 May 2013
 
 - Html parse lib added
