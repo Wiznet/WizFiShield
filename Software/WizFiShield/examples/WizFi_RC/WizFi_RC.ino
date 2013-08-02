@@ -4,18 +4,28 @@
  Circuit:
  WizFiShield connected to Arduino via SPI
  
- RST: pin 2  // Output
- DRDY: pin 3  // Input
- CSB: pin 4  // output
-
+# Default pin assignment is as followings
+==============================================
+// Default SPI pin map
  MOSI: pin 11  // output
  MISO: pin 12  // input
- SCK: pin 13  // out
+ SCK:  pin 13  // out
+
+// Additional I/O for control
+ RST:  pin 2  // Output
+ DRDY: pin 3  // Input
+ CSB:  pin 4  // output
+==============================================
  
  Created 27 Sep. 2012
  by James YS Kim  (jameskim@wiznet.co.kr, javakys@gmail.com)
  
  Modified 27 May. 2013
+ by Jinbuhm Kim  (jbkim@wiznet.co.kr, jinbuhm.kim@gmail.com)
+ 
+ Modified 2 August. 2013 
+ -. Some comments added
+ -. Fix SPI & Motor control pin map conflict.
  by Jinbuhm Kim  (jbkim@wiznet.co.kr, jinbuhm.kim@gmail.com)
  
 *****************************************************************/
@@ -35,19 +45,23 @@
 byte IsTimer1Expired = 0;
 uint16_t CurrentTime = 0;
 
-#define SSID    ""        // SSID of your AP
-#define Key     ""  // Key or Passphrase
+#define SSID 	  ""        // SSID of your AP
+#define Key 	  ""  // Key or Passphrase
 // Wi-Fi security option (NO_SECURITY, WEP_SECURITY, WPA_SECURITY, WPA2PSK_SECURITY)
+// Define correct Wi-Fi security according to your wi-fi environment 
 //#define Security        WPA_SECURITY
 
 #define MAX_SOCK_NUM    4
 
-#define LEFT_PWM     3
-#define LEFT_1       4
-#define LEFT_2       2
+// Pin assignment for Motor control
+// ===================================
+#define LEFT_PWM     10
+#define LEFT_1       9  
+#define LEFT_2       8
 #define RIGHT_PWM    6
 #define RIGHT_1      5
 #define RIGHT_2      7
+// ===================================
 
 uint8_t current_speed;
 
@@ -75,17 +89,11 @@ void Timer1_ISR()
 
 void setup() {
   byte retval, i;
-//  byte retry_count = 0;
-//  byte tmpstr[64];
   
   Serial.begin(9600);
   Serial.println("\r\nSerial Init");
   
-  for(i=0; i<MAX_SOCK_NUM; i++)
-    myClient[i] =  WizFiClient();
-//  myServer = WizFiServer(5000);
-  // initalize WizFi2x0 module:
-  myWizFi.SetPinMap(8, 9, 10);
+  for(i=0; i<MAX_SOCK_NUM; i++) myClient[i] =  WizFiClient();
   myWizFi.begin();
  
   // Timer1 Initialize
