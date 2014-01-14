@@ -1,8 +1,11 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-#define CODEMEM
+//! Config.h
+
+/*!Compile option description */
+#define CODEMEM			
 #define LINE_PARSE
-//#define DEBUG_ENABLE
+#define DEBUG_ENABLE
 
 #endif

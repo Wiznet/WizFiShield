@@ -26,8 +26,8 @@ prog_char Page1_Line9[] PROGMEM = "<tr><td width=\"40%\"></td><td width= \"20%\"
 prog_char Page1_Line9_cont[] PROGMEM = "value=\"BW_CMD\">backward</button></h1></td><td width=\"40%\"></td></tr></table>\r\n";
 prog_char Page1_Line10[] PROGMEM = "</form>\r\n";
 prog_char Page1_Line11[] PROGMEM = "</body>\r\n";
-prog_char Page1_Line12[] PROGMEM = "<table width=\"100%\"><tr><td colspan=3 align=\"center\"><h1>Press button you want. Battery is low</h1></td></tr><tr>";
-prog_char Page1_Line13[] PROGMEM = "<table width=\"100%\"><tr><td colspan=3 align=\"center\"><h1>Alert! Battery is too low. Recharge!</h1></td></tr></table>\r\n";
+prog_char Page1_Line12[] PROGMEM = "<table width=\"100%\"><tr><td colspan=3 align=\"center\"><h1>Press button you want. Battery is low.</h1></td></tr><tr>";
+prog_char Page1_Line13[] PROGMEM = "<table width=\"100%\"><tr><td colspan=3 align=\"center\"><h1>Alert! Battery is too low.</h1></td></tr></table>\r\n";
 prog_char Html_end[] PROGMEM = "</html>\r\n";   // "String 0" etc are strings to store - change to suit.
 
 
@@ -132,4 +132,15 @@ void HTMLPages::SetCurrentBatteryStatus(uint8_t status)
 {
 	CurrentBatteryStatus = status;
 }
+
+void HTMLPages::SetCurrentBatteryVoltage(int val)
+{
+	CalVol = val;
+	CalVol *= 5;
+	CalVol /= 1023;
+
+	CastVol = CalVol * 100;
+	CastVol %= 100;
+}
+
 
