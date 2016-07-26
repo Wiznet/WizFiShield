@@ -5,20 +5,20 @@
 
 #ifdef CODEMEM
 
-prog_char DNS_Success_1[] PROGMEM = "DNS Query Success";   // "String 0" etc are strings to store - change to suit.
-prog_char DNS_Fail_1[] PROGMEM = "DNS Query Failed";
-prog_char Conn_F_Msg_1[] PROGMEM = "Connection Failed";
-prog_char Disconn_F_Msg_1[] PROGMEM = "Disconnection Failed";
-prog_char Conn_S_Msg_1[] PROGMEM = "CID[%c] Connected";
-prog_char Disconn_S_Msg_1[] PROGMEM = "CID[%c] Disconnected";
-prog_char PeerIP_Msg_1[] PROGMEM = "Peer IP: %d.%d.%d.%d";
-prog_char PeerPort_Msg_1[] PROGMEM = "Peer Portnum: %u";
-prog_char Sock_F_Msg_1[] PROGMEM = "Socket Failure";
-prog_char Inval_Noti_Msg_1[] PROGMEM = "Invalid Notification";
+const char DNS_Success_1[] PROGMEM = "DNS Query Success";   // "String 0" etc are strings to store - change to suit.
+const char DNS_Fail_1[] PROGMEM = "DNS Query Failed";
+const char Conn_F_Msg_1[] PROGMEM = "Connection Failed";
+const char Disconn_F_Msg_1[] PROGMEM = "Disconnection Failed";
+const char Conn_S_Msg_1[] PROGMEM = "CID[%c] Connected";
+const char Disconn_S_Msg_1[] PROGMEM = "CID[%c] Disconnected";
+const char PeerIP_Msg_1[] PROGMEM = "Peer IP: %d.%d.%d.%d";
+const char PeerPort_Msg_1[] PROGMEM = "Peer Portnum: %u";
+const char Sock_F_Msg_1[] PROGMEM = "Socket Failure";
+const char Inval_Noti_Msg_1[] PROGMEM = "Invalid Notification";
 
 
 
-PROGMEM const char *string_table_1[] = 
+const char * const string_table_1[] PROGMEM = 
 {
 	DNS_Success_1,			// 0
 	DNS_Fail_1,				// 1

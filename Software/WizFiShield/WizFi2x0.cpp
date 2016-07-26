@@ -13,67 +13,67 @@
 #include <avr/pgmspace.h>
 
 #ifdef CODEMEM
-prog_char AT_Msg[] PROGMEM = "AT\r\n";   // "String 0" etc are strings to store - change to suit.
-prog_char ATE_Msg[] PROGMEM = "ATE0\r\n";
-prog_char WS_Msg[] PROGMEM = "AT+WS\r\n";
-prog_char WA_Msg[] PROGMEM = "AT+WA=%s\r\n";
-prog_char WAUTH_Msg[] PROGMEM = "AT+WAUTH=1\r\n";
-prog_char NMAC_Msg[] PROGMEM = "AT+NMAC=%s\r\n";
-prog_char XDUM_Msg[] PROGMEM = "AT+XDUM=0\r\n";
-prog_char WD_Msg[] PROGMEM = "AT+WD\r\n";
-prog_char WM_Msg[] PROGMEM = "AT+WM=%d\r\n";
-prog_char DHCPSRVR_Msg[] PROGMEM = "AT+DHCPSRVR=1\r\n";
-prog_char WP_Msg[] PROGMEM = "AT+WP=%d\r\n";
-prog_char DNSSET_Msg[] PROGMEM = "AT+DNSSET=%s\r\n";
-prog_char DNSSET2_Msg[] PROGMEM = "AT+DNSSET=%s,%s\r\n";
-prog_char DNSLOOKUP_Msg[] PROGMEM = "AT+DNSLOOKUP=%s,3,5\r\n";
-prog_char WAUTO_Msg[] PROGMEM = "AT+WAUTO=0,%s\r\n";
-prog_char NAUTO_Msg[] PROGMEM = "AT+NAUTO=%d,%d,%s,%u\r\n";
-prog_char NDHCP_Msg[] PROGMEM = "AT+NDHCP=%d\r\n";
-prog_char WWEP_Msg[] PROGMEM = "AT+WWEP1=%s\r\n";
-prog_char WWPA_Msg[] PROGMEM = "AT+WWPA=%s\r\n";
-prog_char WPAPSK_Msg[] PROGMEM = "AT+WPAPSK=%s,%s\r\n";
-prog_char BDATA_Msg[] PROGMEM = "AT+BDATA=1\r\n";
-prog_char WATA_Msg[] PROGMEM = "ATA\r";
-prog_char NSET_Msg[] PROGMEM = "AT+NSET=%s,%s,%s\r\n";
-prog_char ATCID_Msg[] PROGMEM = "AT+CID=?\r\n";
-prog_char ATO_Msg[] PROGMEM = "AT\r";
-prog_char NCTCP_Msg[] PROGMEM = "AT+NCTCP=%s,%u\r\n";
-prog_char NSTCP_Msg[] PROGMEM = "AT+NSTCP=%u\r\n";
-prog_char NCLOSE_Msg[] PROGMEM = "AT+NCLOSE=%c\r\n";
-prog_char NCLOSEALL_Msg[] PROGMEM = "AT+NCLOSEALL\r\n";
-prog_char CMDMODE_Msg[] PROGMEM = "+++";
-prog_char WS2_Msg[] PROGMEM = "AT+WS=,,%d\r\n";
+const char AT_Msg[] PROGMEM = "AT\r\n";   // "String 0" etc are strings to store - change to suit.
+const char ATE_Msg[] PROGMEM = "ATE0\r\n";
+const char WS_Msg[] PROGMEM = "AT+WS\r\n";
+const char WA_Msg[] PROGMEM = "AT+WA=%s\r\n";
+const char WAUTH_Msg[] PROGMEM = "AT+WAUTH=1\r\n";
+const char NMAC_Msg[] PROGMEM = "AT+NMAC=%s\r\n";
+const char XDUM_Msg[] PROGMEM = "AT+XDUM=0\r\n";
+const char WD_Msg[] PROGMEM = "AT+WD\r\n";
+const char WM_Msg[] PROGMEM = "AT+WM=%d\r\n";
+const char DHCPSRVR_Msg[] PROGMEM = "AT+DHCPSRVR=1\r\n";
+const char WP_Msg[] PROGMEM = "AT+WP=%d\r\n";
+const char DNSSET_Msg[] PROGMEM = "AT+DNSSET=%s\r\n";
+const char DNSSET2_Msg[] PROGMEM = "AT+DNSSET=%s,%s\r\n";
+const char DNSLOOKUP_Msg[] PROGMEM = "AT+DNSLOOKUP=%s,3,5\r\n";
+const char WAUTO_Msg[] PROGMEM = "AT+WAUTO=0,%s\r\n";
+const char NAUTO_Msg[] PROGMEM = "AT+NAUTO=%d,%d,%s,%u\r\n";
+const char NDHCP_Msg[] PROGMEM = "AT+NDHCP=%d\r\n";
+const char WWEP_Msg[] PROGMEM = "AT+WWEP1=%s\r\n";
+const char WWPA_Msg[] PROGMEM = "AT+WWPA=%s\r\n";
+const char WPAPSK_Msg[] PROGMEM = "AT+WPAPSK=%s,%s\r\n";
+const char BDATA_Msg[] PROGMEM = "AT+BDATA=1\r\n";
+const char WATA_Msg[] PROGMEM = "ATA\r";
+const char NSET_Msg[] PROGMEM = "AT+NSET=%s,%s,%s\r\n";
+const char ATCID_Msg[] PROGMEM = "AT+CID=?\r\n";
+const char ATO_Msg[] PROGMEM = "AT\r";
+const char NCTCP_Msg[] PROGMEM = "AT+NCTCP=%s,%u\r\n";
+const char NSTCP_Msg[] PROGMEM = "AT+NSTCP=%u\r\n";
+const char NCLOSE_Msg[] PROGMEM = "AT+NCLOSE=%c\r\n";
+const char NCLOSEALL_Msg[] PROGMEM = "AT+NCLOSEALL\r\n";
+const char CMDMODE_Msg[] PROGMEM = "+++";
+const char WS2_Msg[] PROGMEM = "AT+WS=,,%d\r\n";
 
-prog_char DNS_Success[] PROGMEM = "DNS Query Success";   // "String 0" etc are strings to store - change to suit.
-prog_char DNS_Fail[] PROGMEM = "DNS Query Failed";
-prog_char Conn_F_Msg[] PROGMEM = "Connection Failed";
-prog_char Disconn_F_Msg[] PROGMEM = "Disconnection Failed";
-prog_char Conn_S_Msg[] PROGMEM = "CID[%c] Connected";
-prog_char Disconn_S_Msg[] PROGMEM = "CID[%c] Disconnected";
-prog_char PeerIP_Msg[] PROGMEM = "Peer IP: %d.%d.%d.%d";
-prog_char PeerPort_Msg[] PROGMEM = "Peer Portnum: %u";
-prog_char Sock_F_Msg[] PROGMEM = "Socket Failure";
-prog_char Inval_Noti_Msg[] PROGMEM = "Invalid Notification";
+const char DNS_Success[] PROGMEM = "DNS Query Success";   // "String 0" etc are strings to store - change to suit.
+const char DNS_Fail[] PROGMEM = "DNS Query Failed";
+const char Conn_F_Msg[] PROGMEM = "Connection Failed";
+const char Disconn_F_Msg[] PROGMEM = "Disconnection Failed";
+const char Conn_S_Msg[] PROGMEM = "CID[%c] Connected";
+const char Disconn_S_Msg[] PROGMEM = "CID[%c] Disconnected";
+const char PeerIP_Msg[] PROGMEM = "Peer IP: %d.%d.%d.%d";
+const char PeerPort_Msg[] PROGMEM = "Peer Portnum: %u";
+const char Sock_F_Msg[] PROGMEM = "Socket Failure";
+const char Inval_Noti_Msg[] PROGMEM = "Invalid Notification";
 
-prog_char NCUDP_Msg[] PROGMEM = "AT+NCUDP=%s,%u,%u\r\n";
-prog_char NSUDP_Msg[] PROGMEM = "AT+NSUDP=%u\r\n";
+const char NCUDP_Msg[] PROGMEM = "AT+NCUDP=%s,%u,%u\r\n";
+const char NSUDP_Msg[] PROGMEM = "AT+NSUDP=%u\r\n";
 
-prog_char PING_Msg[] PROGMEM = "AT+PING=%s,%d\r\n";
+const char PING_Msg[] PROGMEM = "AT+PING=%s,%d\r\n";
 
-prog_char Disassociate_Msg[] PROGMEM = "Disassociated!";
+const char Disassociate_Msg[] PROGMEM = "Disassociated!";
 
-prog_char ConnectNoti_Msg[] PROGMEM = "[CONNECT";
-prog_char DisconnNoti_Msg[] PROGMEM = "[DISCONNECT";
-prog_char DisassociateNoti_Msg[] PROGMEM = "[Disassociation";
-prog_char DisassociateNoti2_Msg[] PROGMEM = "[DISASSOCIATED";
+const char ConnectNoti_Msg[] PROGMEM = "[CONNECT";
+const char DisconnNoti_Msg[] PROGMEM = "[DISCONNECT";
+const char DisassociateNoti_Msg[] PROGMEM = "[Disassociation";
+const char DisassociateNoti2_Msg[] PROGMEM = "[DISASSOCIATED";
 
-prog_char Debug_NotifyMsg[] PROGMEM = "\r\nNotify Message: ";
-prog_char Debug_ReplyMsg[] PROGMEM = "\r\nRcvd Reply: ";
-prog_char Debug_AllDataMsg[] PROGMEM = "\r\n\r\nAll Data Received\r\n";
-prog_char Debug_EnterParseMsg[] PROGMEM = "\r\nEnter ParseNotify: ";
+const char Debug_NotifyMsg[] PROGMEM = "\r\nNotify Message: ";
+const char Debug_ReplyMsg[] PROGMEM = "\r\nRcvd Reply: ";
+const char Debug_AllDataMsg[] PROGMEM = "\r\n\r\nAll Data Received\r\n";
+const char Debug_EnterParseMsg[] PROGMEM = "\r\nEnter ParseNotify: ";
 
-PROGMEM const char *string_table[] = 
+const char * const string_table[] PROGMEM = 
 {
 	AT_Msg,				// 0
 	ATE_Msg,				// 1

@@ -2,15 +2,15 @@
 #include <avr/pgmspace.h>
 
 #ifdef CODEMEM
-prog_char Get_Msg[] PROGMEM = "GET";   // "String 0" etc are strings to store - change to suit.
-prog_char URI_Msg[] PROGMEM = "/?command";   // "String 0" etc are strings to store - change to suit.
-prog_char Forward_CMD_Msg[] PROGMEM = "FW_CMD";   // "String 0" etc are strings to store - change to suit.
-prog_char Backward_CMD_Msg[] PROGMEM = "BW_CMD";   // "String 0" etc are strings to store - change to suit.
-prog_char Right_CMD_Msg[] PROGMEM = "RIGHT_CMD";   // "String 0" etc are strings to store - change to suit.
-prog_char Left_CMD_Msg[] PROGMEM = "LEFT_CMD";
+const char Get_Msg[] PROGMEM = "GET";   // "String 0" etc are strings to store - change to suit.
+const char URI_Msg[] PROGMEM = "/?command";   // "String 0" etc are strings to store - change to suit.
+const char Forward_CMD_Msg[] PROGMEM = "FW_CMD";   // "String 0" etc are strings to store - change to suit.
+const char Backward_CMD_Msg[] PROGMEM = "BW_CMD";   // "String 0" etc are strings to store - change to suit.
+const char Right_CMD_Msg[] PROGMEM = "RIGHT_CMD";   // "String 0" etc are strings to store - change to suit.
+const char Left_CMD_Msg[] PROGMEM = "LEFT_CMD";
 
 
-PROGMEM const char *CMDMsg_table[] = 
+const char * const CMDMsg_table[] PROGMEM = 
 {
 	Get_Msg,
 	URI_Msg,
